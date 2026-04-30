@@ -1,10 +1,11 @@
-import { send } from '../core/send'
+import { enqueue } from '../core/buffer'
 import { getSessionId } from '../core/session'
+import { registerCleanup } from '../core/cleanup'
 
 export function initScrollTracker(websiteId: string, apiUrl: string) {
     const reached = new Set<number>()
     const thresholds = [25, 50, 75, 100]
-    const MIN_DWELL_TIME = 2000 // 2 saniye o bölgede kalmalı
+    const MIN_DWELL_TIME = 2000
     const dwellTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
     function getScrollPercent(): number {
@@ -21,14 +22,12 @@ export function initScrollTracker(websiteId: string, apiUrl: string) {
             if (reached.has(threshold)) return
 
             if (percent >= threshold) {
-                // Daha önce timer yoksa başlat
                 if (!dwellTimers.has(threshold)) {
                     const timer = setTimeout(() => {
-                        // 2 saniye sonra hâlâ o bölgedeyse gönder
                         if (getScrollPercent() >= threshold) {
                             reached.add(threshold)
                             const sessionId = getSessionId()
-                            send(apiUrl, {
+                            enqueue(apiUrl, {
                                 website_id: websiteId,
                                 session_id: sessionId,
                                 event_name: 'scroll',
@@ -44,7 +43,6 @@ export function initScrollTracker(websiteId: string, apiUrl: string) {
                     dwellTimers.set(threshold, timer)
                 }
             } else {
-                // O bölgeden çıktıysa timer'ı iptal et
                 if (dwellTimers.has(threshold)) {
                     clearTimeout(dwellTimers.get(threshold)!)
                     dwellTimers.delete(threshold)
@@ -55,11 +53,24 @@ export function initScrollTracker(websiteId: string, apiUrl: string) {
 
     let throttleTimer: ReturnType<typeof setTimeout> | null = null
 
-    window.addEventListener('scroll', () => {
+    const scrollHandler = () => {
         if (throttleTimer) return
         throttleTimer = setTimeout(() => {
             onScroll()
             throttleTimer = null
         }, 200)
+    }
+
+    window.addEventListener('scroll', scrollHandler)
+
+    registerCleanup(() => {
+        window.removeEventListener('scroll', scrollHandler)
+        reached.clear()
+        dwellTimers.forEach(timer => clearTimeout(timer))
+        dwellTimers.clear()
+        if (throttleTimer) {
+            clearTimeout(throttleTimer)
+            throttleTimer = null
+        }
     })
 }

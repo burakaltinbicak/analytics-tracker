@@ -1,16 +1,17 @@
-import { send } from '../core/send'
+import { enqueue } from '../core/buffer'
 import { getSessionId } from '../core/session'
+import { registerCleanup } from '../core/cleanup'
 
 export function initFormTracker(websiteId: string, apiUrl: string) {
-    document.addEventListener('focusout', (event) => {
+    const focusoutHandler = (event: Event) => {
         const target = event.target as HTMLInputElement
         if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
-        if ((target as HTMLInputElement).type === 'password') return
+        if (target.type === 'password') return
 
         const form = target.closest('form')
         const sessionId = getSessionId()
 
-        send(apiUrl, {
+        enqueue(apiUrl, {
             website_id: websiteId,
             session_id: sessionId,
             event_name: 'form_focus',
@@ -18,17 +19,16 @@ export function initFormTracker(websiteId: string, apiUrl: string) {
             event_data: {
                 form_id: form?.id || null,
                 field: target.getAttribute('name') || null,
-                value: target.value
-
+                has_value: target.value.length > 0
             }
         })
-    })
+    }
 
-    document.addEventListener('submit', (event) => {
+    const submitHandler = (event: Event) => {
         const form = event.target as HTMLFormElement
         const sessionId = getSessionId()
 
-        send(apiUrl, {
+        enqueue(apiUrl, {
             website_id: websiteId,
             session_id: sessionId,
             event_name: 'form_submit',
@@ -37,5 +37,13 @@ export function initFormTracker(websiteId: string, apiUrl: string) {
                 form_id: form?.id || null
             }
         })
+    }
+
+    document.addEventListener('focusout', focusoutHandler)
+    document.addEventListener('submit', submitHandler)
+
+    registerCleanup(() => {
+        document.removeEventListener('focusout', focusoutHandler)
+        document.removeEventListener('submit', submitHandler)
     })
 }

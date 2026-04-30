@@ -1,17 +1,35 @@
-import { send } from '../core/send'
+import { enqueue } from '../core/buffer'
 import { getSessionId } from '../core/session'
+import { normalizeUrl } from '../utils/normalize'
+import { registerCleanup } from '../core/cleanup'
+
+let clickBuffer: MouseEvent[] = []
+const CLICK_BUFFER_TIME = 1000
 
 export function initClickTracker(websiteId: string, apiUrl: string) {
-    document.addEventListener('click', (event) => {
+    const handler = (event: MouseEvent) => {
         const target = event.target as HTMLElement
+
+        // Sadece anlamlı elementler
+        const clickable = target.closest('a, button, [role="button"], input[type="submit"]')
+        if (!clickable) return
+
+        // Debounce - 1 saniyede bir click
+        if (clickBuffer.length > 0 && Date.now() - clickBuffer[clickBuffer.length - 1].timeStamp < CLICK_BUFFER_TIME) {
+            return
+        }
+
+        clickBuffer.push(event)
+        if (clickBuffer.length > 10) clickBuffer.shift()
+
         const link = target.closest('a')
         const sessionId = getSessionId()
 
-        send(apiUrl, {
+        enqueue(apiUrl, {
             website_id: websiteId,
             session_id: sessionId,
             event_name: 'click',
-            url_path: window.location.pathname,
+            url_path: normalizeUrl(window.location.pathname),
             event_data: {
                 tag: target.tagName.toLowerCase(),
                 id: target.id || null,
@@ -26,5 +44,12 @@ export function initClickTracker(websiteId: string, apiUrl: string) {
                 screenHeight: window.innerHeight
             }
         })
+    }
+
+    document.addEventListener('click', handler)
+
+    registerCleanup(() => {
+        document.removeEventListener('click', handler)
+        clickBuffer = []
     })
 }

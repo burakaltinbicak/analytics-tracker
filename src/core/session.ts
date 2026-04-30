@@ -1,6 +1,6 @@
 const SESSION_KEY = 'tracker_session_id'
 const SESSION_TIME_KEY = 'tracker_session_time'
-const SESSION_DURATION = 0//10 saniye //30 * 60 * 1000 // 30 dakika
+const SESSION_DURATION = 30 * 60 * 1000 // 30 dakika
 
 function generateUUID(): string {
     // 1. Modern ve güvenli yöntem (Tarayıcı destekliyorsa)
