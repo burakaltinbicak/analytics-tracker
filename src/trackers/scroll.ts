@@ -4,7 +4,7 @@ import { registerCleanup } from '../core/cleanup'
 
 export function initScrollTracker(websiteId: string, apiUrl: string) {
     const reached = new Set<number>()
-    const thresholds = [25, 50, 75, 100]
+    const thresholds = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     const MIN_DWELL_TIME = 2000
     const dwellTimers = new Map<number, ReturnType<typeof setTimeout>>()
 

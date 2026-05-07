@@ -4,20 +4,13 @@ import { normalizeUrl } from '../utils/normalize'
 import { registerCleanup } from '../core/cleanup'
 
 let clickBuffer: MouseEvent[] = []
-const CLICK_BUFFER_TIME = 1000
 
 export function initClickTracker(websiteId: string, apiUrl: string) {
     const handler = (event: MouseEvent) => {
         const target = event.target as HTMLElement
 
-        // Sadece anlamlı elementler
-        const clickable = target.closest('a, button, [role="button"], input[type="submit"]')
+        const clickable = target.closest('a, button, [role="button"], input, textarea, select, label, [onclick], [href], summary, details')
         if (!clickable) return
-
-        // Debounce - 1 saniyede bir click
-        if (clickBuffer.length > 0 && Date.now() - clickBuffer[clickBuffer.length - 1].timeStamp < CLICK_BUFFER_TIME) {
-            return
-        }
 
         clickBuffer.push(event)
         if (clickBuffer.length > 10) clickBuffer.shift()
